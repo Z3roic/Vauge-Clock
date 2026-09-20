@@ -1,0 +1,411 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="A clock that tells the time using only useless phrases.">
+<title>Its: snack o’clock</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%8D%AA%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --red: #e11d1d;
+    --ink: #000;
+    --dim: #6b6b6b;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100dvh;
+    background: #fff;
+    color: var(--ink);
+    font-family: "Montserrat", "Gotham", "Avenir Next", "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+  }
+  main {
+    flex: 1;
+    display: grid;
+    place-items: center;
+    padding: 6vh 4vw;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+  }
+  h1 {
+    margin: 0;
+    max-width: 92vw;
+    font-weight: 800;
+    font-size: 6vw;
+    line-height: 1.08;
+    letter-spacing: -0.015em;
+    text-align: center;
+    text-wrap: balance;
+    transition: opacity 0.16s ease;
+  }
+  .lead { color: var(--ink); }
+  .phrase {
+    color: var(--red);
+    text-transform: uppercase;
+    margin-left: 0.12em;
+  }
+  footer {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 6px 24px;
+    padding: 14px 22px 18px;
+    font-size: 13px;
+    color: var(--dim);
+  }
+  #again {
+    padding: 0;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  #again:focus-visible {
+    outline: 2px solid var(--red);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+  @media (max-width: 560px) {
+    footer { justify-content: center; text-align: center; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    h1 { transition: none; }
+  }
+</style>
+</head>
+<body>
+
+<main>
+  <h1 id="time" aria-live="polite"><span class="lead">Its:</span><span class="phrase" id="phrase">snack o’clock</span></h1>
+  <noscript><h1><span class="lead">Its:</span><span class="phrase">javascript o’clock</span></h1></noscript>
+</main>
+
+<footer>
+  <button id="again" type="button">tap anywhere for another opinion</button>
+  <span id="count"></span>
+</footer>
+
+<script id="engine">
+const Vague = (() => {
+  'use strict';
+
+  const L = (s) => s.split('|').map((x) => x.trim()).filter(Boolean);
+
+  function mulberry32(a) {
+    return function () {
+      a |= 0; a = (a + 0x6D2B79F5) | 0;
+      let t = Math.imul(a ^ (a >>> 15), 1 | a);
+      t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+  }
+
+  const APPROX = L(`about|around|nearly|almost|roughly|somewhere near|just past|just before|a little after|a smidge before|a tad past|approximately|give or take|sort of|kind of|basically|close to|pretty much|more or less|hovering near|drifting toward|flirting with|vaguely|not far from|in the neighborhood of|on the outskirts of|in the general area of|a couple of ticks past|a whisker before|somewhere around`);
+
+  const CLOCK_THINGS = L(`snack|second snack|third snack|lunch|second lunch|brunch|elevenses|tea|biscuit|nap|coffee|second coffee|regret|nope|procrastination|one more episode|five more minutes|doomscroll|stretch|mild panic|delusion|wait what|reply-all|hydration|cheese|toast|crisps|pasta|pizza|leftovers|dessert|just one more|who cares|no thanks|sure why not|oh no|oh well|hmm|probably fine|good enough|whatever|this is fine|yawn|sigh|shrug|questionable decision|snooze|coffee refill|staring into space|biscuit dunk|sandwich|soup|noodles|cereal|chocolate|gummy|nibble|grazing|fridge check|pantry raid|sock hunt|tab cleanup|inbox zero|cake|chips|popcorn|pretzel|cookie|muffin|crumpet|scone|pancake|waffle|bagel|cracker|sausage roll|toastie|nachos|trail mix|granola|yogurt|banana|cheese and crackers|second dessert|midnight fridge raid|almost lunch|not quite lunch|post-lunch|pre-dinner|mid-snack|snack about snacks|meeting|email|small talk|screen break|tea break|coffee break|lie-down|sit-down|deep breath|blink|eye roll|mumble|grumble|tiny victory|questionable snack|serious snack|light snack|heavy snack|suspicious snack|emergency snack|responsible snack|snack decision|spreadsheet|deadline panic|inbox regret`);
+
+  const POSITIONS = L(`half past|quarter past|quarter to|ten past|twenty to|five to|just after|right before|the middle of|the tail end of|the awkward part of|the second half of|the first ten minutes of|the exact middle of|the fun part of|the boring part of|the suspicious part of|the blurry part of|the crunchy part of|the soft middle of|the very start of|the last leg of|the lull after|the build-up to|the aftermath of|the morning after`);
+
+  const EVENTS = L(`lunch|a nap|the meeting|breakfast|your third coffee|yesterday|a snack|procrastination|dinner|an existential crisis|a good idea|whatever this is|the weekend|Monday|adulthood|the commute|a sneeze|the school run|a group chat|a sandwich|a haircut|the news|a long email|a video call|the laundry|tax season|a bad idea|the credits|a yawn|a shower thought|second breakfast|the group project|small talk|a spreadsheet|a plot twist|a pigeon standoff|a software update|a queue|the last biscuit|a lukewarm tea|a nap you didn't plan|a pointless meeting|the dishes|a deadline|a sudden craving|a very long Tuesday|the school bus|a parking ticket|a wobbly chair|the school bell|a crossword|a bath|dessert|a nibble|a power nap|a stretch|a walk you won't take|a mild panic|the fridge light|a coffee refill|bin day|payday|a haircut you keep meaning to book|a sock hunt|a cup of tea|the kettle|a slow lift|a toast-related incident|the ad break|the next episode|a long weekend|a loud sneeze|the second coffee|a slice of cake|the cheese course|a decent biscuit|a firm handshake|a tiny crisis|a missed call|a quick sync|a quick question|a rogue tab|a paper cut|a stuck jar|a cold brew|rush hour|a dentist appointment|a late bus|an awkward hello|a mildly sad desk salad|a busy signal|a fire drill|the vending machine|a birthday cake|a pun|a low battery|a wifi dropout|a sleepy cat|a forgotten password|a mild sunburn|the recycling|a game of hide and seek|a very short nap|a very long nap|an ill-advised snack|a stern look|a long blink|an unread notification|a per-my-last-email|a pillow fight|a good sit|a lie-down|the school pickup|a sudden gust|the golden hour|a cliffhanger|a soft pretzel|a bowl of cereal|a bag of crisps|a cheese toastie|a warm blanket|the last chip|the last slice|a second helping|the bottom of the bag|a nice chair|an ambitious to-do list|a shopping trip|a phone at 2%|a long stare at the ceiling|a tiny nap|a huge sigh|a big yawn|a soft landing|the bit where you look busy|a pointless errand|a brisk walk to the fridge|a rogue thought|the fifth episode|a deep breath|a slow blink`);
+
+  const NUMBERS = L(`a few|several|a couple of|some number of|a lot of|zero point three|seventeen|four|an unreasonable amount of|not enough|too many|an indeterminate number of|eleven|forty-two|nine|three and a half|two|twelve|a handful of|a bunch of|approximately one|one|about a dozen|dozens of|hundreds of|thousands of|precisely eleven|a solid six|seven-ish|several hundred|a zillion|an absurd number of|a respectable amount of|barely any|hardly any|a decent number of|one and a bit|two and a half|five|six|eight|ten|twenty|thirty-seven|ninety|a few too many|just over three|not quite nine|somewhere around twelve|maybe four|possibly seven|an unknown number of|a suspicious number of|a weirdly specific 23|lots and lots of|many, many|a small handful of`);
+
+  const UNITS = L(`minutes|seconds|sighs|snacks|yawns|emails|blinks|stretches|coffees|sips|songs|episodes|scrolls|steps|chapters|heartbeats|thoughts|deadlines|biscuits|refreshes|shrugs|eye rolls|notifications|tabs|chips|crisps|sandwiches|slices|bites|mouthfuls|cups of tea|glances at the clock|regrets|small victories|bad ideas|good intentions|half-finished tasks|sneezes|hiccups|raised eyebrows|awkward silences|unread messages|cups of coffee|pigeons|clouds|buses|lifts|queues|phone calls|voice notes|meetings|spreadsheets|sock pairs|laundry loads|dishes|bowls of cereal|pages|paragraphs|levels|rounds|laps|loops|cat naps|power naps|wobbles|grumbles|mumbles|belly rumbles|stomach growls|cravings|urges to snack|deep breaths|slow blinks|little sighs|unfinished thoughts|snack breaks|nervous glances|pointless errands|small talk attempts|reply-alls`);
+
+  const DIRECTIONS = L(`before|after|until|since|past|shy of|short of|beyond|from|away from`);
+
+  const TOO_ADJ = L(`early|late|soon|warm|cold|dark|bright|Monday|Tuesday|Wednesday|Thursday|Friday|sunny|cloudy|quiet|noisy|crowded|empty|humid|windy|damp|beige|mid|awkward|foggy|breezy|hot|wet|dry|sleepy|loud|still|slow|fast|grey|gloomy|cozy|chilly|sticky|stuffy|springy|autumnal|summery|wintery|questionable|Sunday-ish|weekend-ish|sudden|gentle|drizzly|snowy|balmy|muggy|blurry|lopsided|wobbly|mild|medium`);
+
+  const TOO_STATES = L(`tired|hungry|awake|productive|emotional|cold|sweaty|judged|confused|dressed|upright|functional|polite|optimistic|hydrated|caffeinated|dramatic|cheerful|cranky|enthusiastic|pleasant|upbeat|sure|right|wrong|excited|sentient|adult|responsible|nostalgic|sorry|involved|organized|alive|reachable|chirpy|thoughtful|philosophical|hangry|snacky|sleepy|dizzy|giggly|grumpy|sticky|crumbly|crunchy|soggy|fluffy|existential|feral|weepy|smug|shy|bold|brave|judgy|sassy|spicy|mellow|loopy|wired|groggy|foggy|dopey|chatty|wistful|restless|itchy|peckish|ravenous|parched|frazzled|flustered`);
+
+  const TOO_INTENSITY = L(`too|way too|much too|probably too|definitely too|suspiciously`);
+  const TOO_DEGREE = L(`this|so|already|still|somehow`);
+
+  const ADVERBS = L(`vaguely|sort of|kind of|almost|basically|borderline|distinctly|faintly|mildly|deeply|extremely|ominously|unmistakably|suspiciously|unfortunately|tragically|gloriously|aggressively|passively|quietly|loudly|awkwardly|spiritually|emotionally|technically|cosmically|lightly|moderately|unapologetically|indisputably|blissfully|reluctantly|thoroughly|heroically|dramatically|tenderly`);
+
+  const DAYPARTS = L(`morning|afternoon|evening|midday|twilight|brunch hour|lunch hour|tea time|post-lunch|pre-dinner|afternoon slump|dusk|dawn|noon|midnight|breakfast time|small hours|happy hour|siesta time|elevenses|bedtime|rush hour|snack window|golden hour|witching hour|lunch break|coffee break|half-time|injury time|overtime|extra time|closing time|nap time|screen time|snack time|dinner time`);
+
+  const FORMS = L(`-ish|-adjacent|-esque|-flavored|-coded|-shaped|-y|-like`);
+
+  const PART_ADJECTIVES = L(`beige|awkward|suspicious|crunchy|soft|squishy|blurry|damp|medium|unremarkable|forgettable|questionable|spicy|mild|fluffy|lukewarm|sticky|wobbly|mysterious|murky|gentle|aggressive|polite|sneaky|grumpy|cheerful|smug|sleepy|chewy|crumbly|brittle|hollow|awkwardly long|strangely quiet|oddly specific|unnecessarily long|vaguely damp|mildly haunted|slightly off|deeply average|aggressively normal|fairly ordinary|borderline weird|kind of gross|rather squishy|sort of chewy|lowkey tense|highkey tired|extra crunchy|mostly harmless|technically fine|emotionally taxing|spiritually beige|cosmically irrelevant|legally distinct|nutritionally questionable|socially awkward|financially unwise|structurally unsound|mathematically unclear|weirdly cozy|surprisingly soft|oddly satisfying|deeply suspicious|slightly sticky|rather brisk|oddly warm|remarkably flat|impressively dull|marginally better|marginally worse|barely tolerable|almost tolerable|pretty forgettable|reasonably okay|quietly chaotic|softly judgmental|passively aggressive|noticeably slow|unusually long|unusually short|conveniently vague|inconveniently vague|reliably mediocre|dependably meh`);
+
+  const PART_NOUNS = L(`part|bit|patch|stretch|chunk|slice|corner|edge|side|end|lull|gap|pocket|portion|section|zone|window|wedge|sliver|era|phase|chapter|episode|blob`);
+
+  const PART_SCOPES = L(`the day|the morning|the afternoon|the evening|the week|the weekend|a Tuesday|a Thursday|the month|the year|the decade|the century|the millennium|the workday|the shift|your life|the lunch break|the commute|the meeting|the season|the quarter|the fiscal year|the timeline|the universe|history|the movie|the book|the party|the trip|the semester|the school year|the holidays|the summer|the winter|the night|the whole thing|this whole situation|the plot|the game|the year so far`);
+
+  const VAGUE_TIMES = L(`three-ish|half past whenever|quarter to something|ten past a bit|some o'clock|any o'clock|an o'clock|o'clock-ish|the o'clock|four minus a bit|eleven and a bit|noon plus a snack|half past a freckle|twenty past the thing|a quarter to soon|five past later|a few past noon|seven-adjacent|just shy of the thing|the usual time|the regular time|around the corner from something|about that time|around that time|late-ish|early-ish|mid-ish|whenever-ish|almost-ish|the time you thought it was|the number you expected|one of the middle numbers|a number between one and twelve|a number, definitely|three sevenths of nine|the next time after the last time|the time after this one|the previous time, plus a bit|whatever the clock's thinking|clock o'clock`);
+
+  const BETWEEN = [
+    (a, b) => `somewhere between ${a} and ${b}`,
+    (a, b) => `after ${a} but before ${b}`,
+    (a, b) => `the gap between ${a} and ${b}`,
+    (a, b) => `past ${a}, not yet ${b}`,
+    (a, b) => `${a} is over, ${b} isn't here yet`,
+  ];
+
+  const GEMS = L(`snack o'clock|about snack o'clock|too early to be this tired|later than you think, earlier than you'd like|time for a snack, as usual|the exact time you were checking the time|that awkward time between snacks|somewhere between lunch and a nap|the time you just looked at|a time|time-ish|the time of day it always is|the time it takes to boil a kettle, roughly|one snack past regret|late for something, probably|early for something else|now|the clock is fine, thanks for asking|probably time to stretch|past the point of no return, snack-wise|as good a time as any|slightly after the last time you checked|a pretty decent time for a biscuit|roughly biscuit time|the same time as yesterday, but later|nearly time for the next time|half a sandwich past noon|the time when nothing is happening but everyone's busy|five minutes from a good idea|almost, but not quite, the right time|time to reconsider your snack choices|close enough|the time between other times|somewhere in the day|a very timely time|exactly as late as it looks|pre-snack, post-snack, mid-snack|the hour of just one more thing|kind of late, kind of early|an unspecified hour|clock-adjacent|a time you'd like to keep|whatever the clock says, minus a snack|the hour of mild inconvenience|a little late for the early bird, a little early for the night owl|sort of on time|the number after the last number|soon, then later|a time of great snacking potential|an hour that says why not|another one of these|the time everyone agrees on and nobody trusts|about a nap away from something|not quite time, not quite not|the middle of things|a perfectly ordinary moment|the time your stomach picked|somewhere past the last time|before the next time|a good time to pretend to work|the time between the thing and the other thing|a bit of a time|just time, really|the time we're in now|later than last time|earlier than next time|ten snacks to midnight|about a biscuit from noon|a coffee away from sensible|half a yawn past useful|one stretch from productive|a whisper past lunch|nearly time to stop looking at the clock|time to think about thinking about a snack|the time it always is when you check|snack o'clock, probably|a decent time for a sit|the perfect time for a mild sigh|the hour of tiny decisions|the moment before the next moment|an ordinary kind of hour|a snack-shaped hour|a nap-shaped hour|a biscuit-shaped gap in the day|the time it takes a pigeon to decide|about as late as the bus|as early as the bus is late|a time worth mentioning, barely|a time for putting the kettle on|close to the time of the thing|just enough time to do nothing|not enough time to start anything|too much time to be worried|about two sighs of daylight left|a tidy little hour|a slightly crumpled hour|a rather average hour|the hour the kettle knows|the hour the fridge remembers|time to pretend you checked|the time in the place you are|the time of the year it is|the local time, vaguely`);
+
+  const DAYPART_PHRASES = [
+    L(`too late to be this hungry|far too late to be this awake|the hour of questionable decisions|past bedtime, allegedly|the sleepless part of the night|deep in bad-idea territory|the hour your brain replays old embarrassments|fridge-light o'clock|one more episode o'clock|the hour the pigeons are still asleep|yesterday, technically|tomorrow, unfortunately|the dark bit|too late for coffee, too early for coffee|cereal o'clock|the worst time to text them|doomscroll o'clock|the hour the fridge hums louder|long past sensible|still yesterday in spirit|nobody's-business o'clock|what are you doing up o'clock|the hour of tiny snacks and big thoughts|moth hours|a bit dark out|suspiciously quiet`),
+    L(`too early to be this tired|too early for opinions|the crack of something|barely a time|before the birds have finished complaining|coffee-hasn't-happened-yet o'clock|the blurry bit of the morning|pre-coffee, post-regret|alarm-clock-was-a-mistake o'clock|snooze o'clock|too early to be functional|dawn-adjacent|sunrise-ish|the hour of quiet suffering|not yet a person|early enough to be smug about it|toast o'clock|the morning before the morning|too early to be this upright|breakfast-adjacent|the hour you pretend to be a morning person|a gentle assault of daylight|an unreasonable hour|kettle o'clock|the hour of one sock|still loading|almost worth it|nearly acceptable`),
+    L(`almost snack o'clock|second-coffee territory|the productive-ish part of the morning|meeting o'clock|the meeting that should have been an email|elevenses-adjacent|brunch on the horizon|ten o'clock-ish, probably|the hour you pretend to work|emails-I'll-answer-later o'clock|sort of morning-y|the bit before lunch gets serious|too early for lunch, too late for breakfast|a snack would be reasonable|the part where the day starts being a lot|did-I-reply-to-that o'clock|still technically morning|the just-circling-back hour|the calm before the lunch|productive in theory|the stretch where you stare at the ceiling professionally|biscuit o'clock|mid-morning slump o'clock|desk-snack o'clock|one hour closer to lunch`),
+    L(`lunch, spiritually|lunch o'clock, allegedly|second lunch pending|too late to skip lunch|peak sandwich|the hour of sandwiches|noon-ish, with feelings|the middle of the day, give or take|the middle of the day, aggressively|lunch-break o'clock|the halfway point of the day|food-coma pending|after breakfast, before regret|a good time for a snack, like all times|the sun is at its peak and so is your hunger|the time you should have eaten already|almost afternoon|peak procrastination window|the great sandwich hour|lunch-adjacent and tasty|the what's-for-lunch question|the stomach's announcement|salad-or-fries o'clock|fries o'clock`),
+    L(`the afternoon slump|post-lunch, pre-panic|nap o'clock|too early to go home, too late to be useful|the hour of pretending to work|is-it-Friday-yet o'clock|three-ish in the abstract|tea-time-adjacent|second coffee o'clock, third if we're honest|the long stretch|snack o'clock, again|the part of the afternoon that lasts forever|the beige part of the day|almost home time|a yawn away from something|still not five|the time between lunch and hope|sluggish o'clock|biscuit o'clock|the afternoon's awkward middle|the one-more-email hour|the slow crawl|time to stare at a spreadsheet|the should-I-nap hour|a snack would fix this`),
+    L(`nearly dinner|what's-for-dinner o'clock|the hour of fridge staring|home time, maybe|pre-dinner snack o'clock|the golden-ish hour|the I'm-not-cooking hour|takeaway o'clock|the sunset-adjacent part of the day|too early for pajamas, but let's not rule it out|commute o'clock|the hour of tired feet|happy-hour-adjacent|the time you say let's just order in|dinner, eventually|the shoes-off hour|couch o'clock|the time before the time for the couch|late enough to be smug about lunch|the hour of good intentions and bad snacks|cooking-or-cereal o'clock|we-should-go-out o'clock, we won't|twilight, roughly|an hour that smells like dinner|soup o'clock`),
+    L(`couch o'clock|pajamas o'clock|the hour of one more episode|too late to start a show, starting one anyway|late-night snack o'clock, early edition|the evening's soft middle|the should-have-gone-to-bed hour|tea and regret o'clock|the time you promised you'd sleep early|the chill part of the night|bedtime-adjacent|almost tomorrow|dessert o'clock|the hour of blankets|nearly bedtime, statistically|doomscroll hour|the time your phone says screen time is up|snack-after-dinner o'clock|pre-bed snack o'clock|the evening's last good idea|the wind-down, in theory|one-more-chapter o'clock|toothbrush, eventually|past dinner, before sleep|moon-adjacent`),
+    L(`almost tomorrow|practically yesterday tomorrow|the last stretch of today|too late for snacks, and yet|bedtime was an hour ago|the hour of last-minute regrets|one more scroll o'clock|the day's final boss|just before it's tomorrow's problem|late enough to say tomorrow me can deal|lights-out-ish|sleep o'clock, ideally|the last snack of the day, probably not|the end credits|the I'll-do-it-tomorrow hour|nearly midnight, roughly`),
+  ];
+
+  const WEEKDAY_PHRASES = [
+    L(`Sunday-ish|the Sunday scaries, in progress|the day of laundry and dread|a lazy kind of Sunday|too Sunday to function|the calm before Monday|the day that forgot it was a day|Sunday, doing nothing loudly`),
+    L(`Monday, unfortunately|the Monday of Mondays|too Monday for this|Monday energy, low|Monday until proven otherwise|day one of the long week|still Monday, sorry|a Monday-shaped time`),
+    L(`Tuesday, allegedly|a very Tuesday time|the most Tuesday moment|somehow only Tuesday|the Tuesday that feels like Wednesday|Tuesday, but make it beige|not-quite-Wednesday`),
+    L(`hump day, spiritually|the middle of the week's middle|Wednesday: neither here nor there|half-week o'clock|peak Wednesday|the Wednesday slump|almost over the hump`),
+    L(`practically Friday|Friday's understudy|Thursday, doing its best|almost the weekend, emotionally|the Thursday feeling|nearly-there o'clock|Friday-eve`),
+    L(`Friday, finally|the weekend, nearly|almost freedom|Friday-feeling o'clock|the good kind of tired|Friday o'clock|one more meeting from the weekend`),
+    L(`the weekend, in full effect|too Saturday to care|Saturday, do-nothing edition|no-plans o'clock|the good part of the week|a suitably Saturday time|brunch or nothing`),
+  ];
+
+  const MINUTE_PHRASES = [
+    L(`just about on the hour, give or take|the top of the hour, allegedly|roughly on the dot|hour-ish|an hour, technically`),
+    L(`a bit past the hour|some minutes after something|quarter-past-ish|a little after, not that anyone's counting|past, but not far past`),
+    L(`about half past|halfway through the hour, more or less|half-ish|the middle of the hour, probably|midway between two other times`),
+    L(`getting on toward the next hour|quarter-to-ish|nearly the next thing|not far off the next hour|somewhere in the forties, spiritually`),
+    L(`almost the next hour|practically the next hour|seconds from being late|nearly nearly|any minute now, hour-wise`),
+  ];
+
+  const PREFIXES = L(`technically|spiritually|emotionally|allegedly|probably|apparently|basically|arguably|legally|theoretically|physically|metaphorically|culturally|unofficially|suspiciously|definitely|honestly,|ominously|vibes-wise|on paper,|semi-officially|in theory,|emotionally speaking,|by most accounts,|as far as I can tell,|realistically,|ideally,|fundamentally|cosmically|kinda|somehow|mostly|barely|frankly,`);
+
+  const SUFFIXES = [
+    ', in this economy', ', for legal reasons', ', in some cultures', ', according to my stomach',
+    ", depending on who's asking", ", but don't quote me", ", and that's final", ', probably',
+    ', give or take a snack', ', as far as anyone knows', ', in my professional opinion',
+    ', no further questions', ', allegedly', ', and honestly? valid', ', per my last email',
+    ', in spirit', ', until further notice', ", or so I'm told", ', for the vibes',
+    ', at least in my heart', ', on a good day', ', if you squint', ', mostly', ', sort of',
+    '-ish', ', or whatever', ", and yes, that's a real time", ', according to the pigeons',
+    ', according to the cat', ', by my calculations', ', which is fine', ', unfortunately',
+    ', again', ', apparently', ', I think', ', I guess', ', no notes', ", and that's on me",
+    ', as one does', ', sadly', ', weather permitting', ', traffic permitting',
+    ', subject to snacks', ', results may vary',
+  ];
+
+  const ADVERB_SET = new Set([...ADVERBS, ...PREFIXES.map((p) => p.replace(/,$/, ''))]);
+
+  const pick = (r, a) => a[Math.floor(r() * a.length)];
+
+  const FAMILIES = [
+    {
+      weight: 15,
+      count: () => (APPROX.length + 1) * CLOCK_THINGS.length,
+      make: (r) => `${r() < 0.75 ? pick(r, APPROX) + ' ' : ''}${pick(r, CLOCK_THINGS)} o'clock`,
+    },
+    {
+      weight: 12,
+      count: () => (APPROX.length + 1) * POSITIONS.length * EVENTS.length,
+      make: (r) => `${r() < 0.4 ? pick(r, APPROX) + ' ' : ''}${pick(r, POSITIONS)} ${pick(r, EVENTS)}`,
+    },
+    {
+      weight: 15,
+      count: () => TOO_INTENSITY.length * TOO_ADJ.length * TOO_DEGREE.length * TOO_STATES.length,
+      make: (r) => `${pick(r, TOO_INTENSITY)} ${pick(r, TOO_ADJ)} to be ${pick(r, TOO_DEGREE)} ${pick(r, TOO_STATES)}`,
+    },
+    {
+      weight: 5,
+      count: () => ADVERBS.length * DAYPARTS.length * FORMS.length,
+      make: (r) => `${pick(r, ADVERBS)} ${pick(r, DAYPARTS)}${pick(r, FORMS)}`,
+    },
+    {
+      weight: 27,
+      count: () => NUMBERS.length * UNITS.length * DIRECTIONS.length * EVENTS.length,
+      make: (r) => `${pick(r, NUMBERS)} ${pick(r, UNITS)} ${pick(r, DIRECTIONS)} ${pick(r, EVENTS)}`,
+    },
+    {
+      weight: 12,
+      count: () => PART_ADJECTIVES.length * PART_NOUNS.length * PART_SCOPES.length,
+      make: (r) => `the ${pick(r, PART_ADJECTIVES)} ${pick(r, PART_NOUNS)} of ${pick(r, PART_SCOPES)}`,
+    },
+    {
+      weight: 10,
+      count: () => EVENTS.length * (EVENTS.length - 1) * BETWEEN.length,
+      make: (r) => {
+        const a = pick(r, EVENTS);
+        let b = pick(r, EVENTS);
+        while (b === a) b = pick(r, EVENTS);
+        return pick(r, BETWEEN)(a, b);
+      },
+    },
+    {
+      weight: 4,
+      count: () => (APPROX.length + 1) * VAGUE_TIMES.length,
+      make: (r) => `${r() < 0.5 ? pick(r, APPROX) + ' ' : ''}${pick(r, VAGUE_TIMES)}`,
+    },
+  ];
+  const FAMILY_WEIGHT = FAMILIES.reduce((s, f) => s + f.weight, 0);
+
+  function pickFamily(r) {
+    let x = r() * FAMILY_WEIGHT;
+    for (const f of FAMILIES) { x -= f.weight; if (x < 0) return f; }
+    return FAMILIES[0];
+  }
+
+  function daypartIndex(h) {
+    if (h < 5) return 0;
+    if (h < 8) return 1;
+    if (h < 12) return 2;
+    if (h < 14) return 3;
+    if (h < 17) return 4;
+    if (h < 20) return 5;
+    if (h < 23) return 6;
+    return 7;
+  }
+  function minuteIndex(m) {
+    if (m < 8) return 0;
+    if (m < 23) return 1;
+    if (m < 38) return 2;
+    if (m < 53) return 3;
+    return 4;
+  }
+
+  function generate(r, date) {
+    const roll = r();
+    let base;
+    if (roll < 0.24) base = pick(r, DAYPART_PHRASES[daypartIndex(date.getHours())]);
+    else if (roll < 0.30) base = pick(r, WEEKDAY_PHRASES[date.getDay()]);
+    else if (roll < 0.36) base = pick(r, MINUTE_PHRASES[minuteIndex(date.getMinutes())]);
+    else if (roll < 0.56) base = pick(r, GEMS);
+    else base = pickFamily(r).make(r);
+
+    if (base.length <= 42) {
+      const first = base.split(' ')[0].replace(/,$/, '');
+      if (r() < 0.22 && !ADVERB_SET.has(first)) base = `${pick(r, PREFIXES)} ${base}`;
+      if (base.length <= 52 && r() < 0.22) {
+        let suffix = pick(r, SUFFIXES);
+        while (suffix.charAt(0) === '-' && /(ish|y|adjacent|esque|like|shaped|coded|flavored)$/.test(base)) suffix = pick(r, SUFFIXES);
+        base += suffix;
+      }
+    }
+    return base;
+  }
+
+  const baseTotal =
+    GEMS.length +
+    DAYPART_PHRASES.reduce((s, a) => s + a.length, 0) +
+    WEEKDAY_PHRASES.reduce((s, a) => s + a.length, 0) +
+    MINUTE_PHRASES.reduce((s, a) => s + a.length, 0) +
+    FAMILIES.reduce((s, f) => s + f.count(), 0);
+
+  const total = baseTotal * (PREFIXES.length + 1) * (SUFFIXES.length + 1);
+
+  return { generate, mulberry32, total, baseTotal };
+})();
+</script>
+<script>
+(() => {
+  'use strict';
+
+  const timeEl = document.getElementById('time');
+  const phraseEl = document.getElementById('phrase');
+  const countEl = document.getElementById('count');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  countEl.textContent = `roughly ${(Vague.total / 1e9).toFixed(1)} billion possible phrases. none of them help.`;
+
+  let currentText = '';
+  let lastMinute = '';
+  let renderId = 0;
+
+  const minuteKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}-${d.getHours()}-${d.getMinutes()}`;
+
+  function seedFor(d) {
+    const s = minuteKey(d);
+    let h = 2166136261;
+    for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 16777619);
+    return h >>> 0;
+  }
+
+  function fit() {
+    const vw = window.innerWidth;
+    const narrow = vw < 700;
+    const width = Math.min(vw * 0.92, 1400);
+    const chars = timeEl.textContent.length;
+    const maxSize = narrow ? vw * 0.13 : Math.min(vw * 0.068, 118);
+    const lines = narrow ? 3 : 2;
+    let size = Math.min(maxSize, (width * lines) / (chars * 0.74));
+    size = Math.max(size, narrow ? 22 : 26);
+    timeEl.style.fontSize = `${size}px`;
+    const maxHeight = window.innerHeight * 0.62;
+    let guard = 0;
+    while ((timeEl.scrollHeight > maxHeight || timeEl.scrollWidth > width + 1) && size > 16 && guard++ < 40) {
+      size *= 0.94;
+      timeEl.style.fontSize = `${size}px`;
+    }
+  }
+
+  function render(text, animate) {
+    currentText = text;
+    const id = ++renderId;
+    const shown = text.replace(/'/g, '\u2019');
+    const apply = () => {
+      if (id !== renderId) return;
+      phraseEl.textContent = shown;
+      document.title = `Its: ${shown}`;
+      fit();
+      timeEl.style.opacity = '1';
+    };
+    if (animate && !reduced) {
+      timeEl.style.opacity = '0';
+      setTimeout(apply, 150);
+    } else {
+      apply();
+    }
+  }
+
+  function showMinute() {
+    const d = new Date();
+    lastMinute = minuteKey(d);
+    render(Vague.generate(Vague.mulberry32(seedFor(d)), d), false);
+  }
+
+  function reroll() {
+    const d = new Date();
+    let text = currentText;
+    for (let i = 0; i < 6 && text === currentText; i++) {
+      text = Vague.generate(Vague.mulberry32((Math.random() * 4294967296) >>> 0), d);
+    }
+    render(text, true);
+  }
+
+  function checkMinute() {
+    if (minuteKey(new Date()) !== lastMinute) showMinute();
+  }
+
+  document.addEventListener('click', reroll);
+  document.addEventListener('keydown', (e) => {
+    if (e.target instanceof Element && e.target.closest('button')) return;
+    if (e.key === ' ' || e.key === 'Enter' || e.key === 'ArrowRight' || e.key === 'n' || e.key === 'N') {
+      e.preventDefault();
+      reroll();
+    }
+  });
+  window.addEventListener('resize', fit);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) checkMinute(); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  setInterval(checkMinute, 1000);
+
+  showMinute();
+})();
+</script>
+</body>
+</html>
